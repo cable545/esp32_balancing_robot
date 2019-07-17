@@ -33,10 +33,6 @@ bool AdafruitMpu::init(void)
   return result;
 }
 
-
-mpu.accRead();
-  mpu.gyroRead();
-
 bool AdafruitMpu::accInit(void)
 {
   Wire.begin();

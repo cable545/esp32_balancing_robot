@@ -12,6 +12,9 @@ EulerData_t accEulerData, gyroEulerData;
 
 float pitch;
 
+const int stepPin = 14;
+const int dirPin = 15;
+
 void setup()
 {
   Serial.begin(115200);
@@ -24,10 +27,14 @@ void setup()
     Serial.println("Mpu initialized");
   else
     Serial.println("Mpu initialization failed");
+
+  pinMode(stepPin, OUTPUT);
+  pinMode(dirPin, OUTPUT);
 }
 
 void loop()
 {
+  /*
   mpu.accRead();
   mpu.gyroRead();
   mpu.accCalcAngles();
@@ -44,6 +51,12 @@ void loop()
 //  delay(500);
 //  digitalWrite(ledPin, LOW);
 //  delay(500);
+  */
+
+  digitalWrite (stepPin, HIGH);
+  delayMicroseconds(500);
+  digitalWrite (stepPin, LOW);
+  delayMicroseconds(500);
   
 }
 
