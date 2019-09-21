@@ -171,6 +171,7 @@ public:
   EulerData_t getAccEulerData(void) {return accEulerData;}
   EulerData_t getGyroEulerData(void) {return gyroEulerData;}
   float calculatePitchAngle(float deltaT);
+  float calculateRollAngle(float deltaT);
   
 private:
   ImuData_t accData;

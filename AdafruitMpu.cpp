@@ -214,6 +214,12 @@ float AdafruitMpu::calculatePitchAngle(float deltaT)
   return eulerAngles.pitch;
 }
 
+float AdafruitMpu::calculateRollAngle(float deltaT)
+{
+  eulerAngles.roll = processingFilter(gyroData.x, accEulerData.roll, eulerAngles.roll, deltaT);
+  return eulerAngles.roll;
+}
+
 ///*
 // *  calculates the offset of the accelerometer values x, y, z
 // */
