@@ -57,16 +57,7 @@ void loop()
   rollAngle = mpu.calculateRollAngle(deltaT);
   
   float motorSpeed = anglePID.updatePID(0.0, rollAngle, deltaT);
-
   motorSpeed *= 3600;
-
-  /*
-  leftStepper.setDirection(LEFT_STEPPER_FORWARD_DIR_LEVEL);
-  rightStepper.setDirection(RIGHT_STEPPER_FORWARD_DIR_LEVEL);
-
-  leftStepper.setTimerValue(MIN_TIMER_PERIOD);
-  rightStepper.setTimerValue(MIN_TIMER_PERIOD);
-*/
 
   leftStepper.setMotorSpeed(motorSpeed);
   rightStepper.setMotorSpeed(motorSpeed);
