@@ -3,12 +3,11 @@
 
 Pid::Pid(float p, float i, float d, float iLimit)
 {
-  P = p; 
-  I = i; 
-  D = d; 
-  I_limit = iLimit; 
-  integratedError = 0; 
-  lastError = 0; 
+  P = p;
+  I = i;
+  I_limit = iLimit;
+  integratedError = 0;
+  lastError = 0;
 }
 
 float Pid::updatePID(float target, float current, float deltaTime)

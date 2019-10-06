@@ -1,9 +1,13 @@
 #include <Wire.h>
-#include "AdafruitMpu.h"
+#include <BluetoothSerial.h>
+
 #include "esp32-hal-cpu.h"
+
+#include "AdafruitMpu.h"
 #include "MyStepper.h"
 #include "Pid.h"
-#include "config.h"
+#include "Cmd.h"
+#include "Config.h"
 
 #define I2Cclock 400000
 
@@ -12,17 +16,28 @@ uint32_t timeMeasure = 0, lastTimeMeasure = 0;
 float deltaT = 0;
 int ledPin = 13;
 bool ledToggle = false;
-float addTime;
+float ledAddTime, stablePositionTime;
 
 AdafruitMpu mpu;
 ImuData_t gyroData;
 EulerData_t accEulerData, gyroEulerData;
 float rollAngle;
 
+Config& myConfig = Config::getConfig();
+
 MyStepper& leftStepper = MyStepper::getLeftStepper();
 MyStepper& rightStepper = MyStepper::getRightStepper();
 
-Pid anglePID(ANGLE_P, ANGLE_I, ANGLE_D, ANGLE_I_LIMIT);
+Pid anglePID(
+  myConfig.getPGainAngle(),
+  myConfig.getIGainAngle(),
+  0.0,
+  myConfig.getILimitAngle()
+);
+
+TaskHandle_t commTask;
+
+
 
 void setup()
 {
@@ -47,36 +62,82 @@ void setup()
   rightStepper.stepperTimerStart();
   rightStepper.setTimerValue(512000);
 
+  xTaskCreatePinnedToCore(
+    commTaskHandler,
+    "CommTask",
+    10000,
+    NULL,
+    1,
+    &commTask,
+    0
+  );
 }
 
 void loop()
 {
+  /*
   mpu.accRead();
   mpu.gyroRead();
   mpu.accCalcAngles();
   rollAngle = mpu.calculateRollAngle(deltaT);
-  
-  float motorSpeed = anglePID.updatePID(0.0, rollAngle, deltaT);
-  motorSpeed *= 3600;
 
-  leftStepper.setMotorSpeed(motorSpeed);
-  rightStepper.setMotorSpeed(motorSpeed);
+  if(rollAngle > 45.0 || rollAngle < -45.0)
+  {
+    stablePositionTime = 0;
+    anglePID.resetPID();
+    leftStepper.disableInterrupt();
+    rightStepper.disableInterrupt();
+  }
+  else
+  {
+    if(stablePositionTime >= 3.0)
+    {
+      leftStepper.enableInterrupt();
+      rightStepper.enableInterrupt();
+      float motorSpeed = anglePID.updatePID(0.0, rollAngle, deltaT);
+      motorSpeed *= 3600;
+      leftStepper.setMotorSpeed(motorSpeed);
+      rightStepper.setMotorSpeed(motorSpeed);
+    }
+  }
 
   //Serial.print(mpu.getGyroData().x); Serial.print("  ");
   
   //Serial.print(rollAngle); Serial.print("  "); Serial.print(motorSpeed);
   //Serial.println();
-
+*/
   timeMeasure = millis();
   deltaT = (float)(timeMeasure - lastTimeMeasure) / 1000.0;
-  addTime += deltaT;
+  ledAddTime += deltaT;
+  stablePositionTime += deltaT;
   lastTimeMeasure = timeMeasure;
 
-  if(addTime >= 1.0)
+  if(ledAddTime >= 1.0)
   {
     digitalWrite(ledPin, ledToggle);
     ledToggle = !ledToggle;
-    addTime = 0;
+    ledAddTime = 0;
+  }
+}
+
+void commTaskHandler(void * pvParameters)
+{
+  BluetoothSerial btInstance;
+  btInstance.begin("ESP32-BalancingRobot");
+  
+  for(;;)
+  {
+    if(btInstance.available())
+    {
+      Cmd::requestHandler(btInstance.read());
+      
+      //int value = btInstance.read();
+      //Serial1.print("Data: "); Serial1.print(value); Serial1.println();
+    }
+    else
+    {
+      delay(10);
+    }
   }
 }
 

@@ -116,12 +116,22 @@ void MyStepper::setMotorSpeed(float motorSpeed)
   else if(timerPeriod < MIN_TIMER_PERIOD)
     timerPeriod = MIN_TIMER_PERIOD;
 
-  Serial1.print(motorID); Serial1.print(" ");
-  Serial1.print(motorSpeed); Serial1.print(" ");
-  Serial1.println(timerPeriod);// Serial1.print(" ");
+  //Serial1.print(motorID); Serial1.print(" ");
+  //Serial1.print(motorSpeed); Serial1.print(" ");
+  //Serial1.println(timerPeriod);// Serial1.print(" ");
   //Serial1.print(currentDirection);
- // Serial1.println();
+  // Serial1.println();
 
   setTimerValue(timerPeriod);
   timerAlarmEnable(hwTimer);
+}
+
+void MyStepper::enableInterrupt()
+{
+  timerAlarmEnable(hwTimer);
+}
+
+void MyStepper::disableInterrupt()
+{
+  timerAlarmDisable(hwTimer);
 }

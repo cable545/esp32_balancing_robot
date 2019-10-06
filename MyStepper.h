@@ -26,6 +26,8 @@ class MyStepper
     void stepperTimerStart();
     void setTimerValue(uint64_t timerValue);
     void setMotorSpeed(float motorSpeed);
+    void enableInterrupt();
+    void disableInterrupt();
   
     static MyStepper& getRightStepper();
     static MyStepper& getLeftStepper();
