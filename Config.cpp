@@ -38,31 +38,29 @@ void Config::loadDataFromFlash()
 
 bool Config::update()
 {
-  bool mustBeUpdated = false;
+  bool updated = true;
 
   if(pGainAngleTmp != pGainAngle)
   {
-     prefs.putFloat(P_GAIN_ANGLE_KEY, pGainAngleTmp);
-     pGainAngle = pGainAngleTmp;
-
-     mustBeUpdated = true;
+    prefs.putFloat(P_GAIN_ANGLE_KEY, pGainAngleTmp);
+    pGainAngle = pGainAngleTmp;
   }
   else if(iGainAngleTmp != iGainAngle)
   {
     prefs.putFloat(I_GAIN_ANGLE_KEY, iGainAngleTmp);
     iGainAngle = iGainAngleTmp;
-
-    mustBeUpdated = true;
   }
   else if(iLimitAngleTmp != iLimitAngle)
   {
     prefs.putFloat(I_LIMIT_ANGLE_KEY, iLimitAngleTmp);
     iLimitAngle = iLimitAngleTmp;
-
-    mustBeUpdated = true;
+  }
+  else
+  {
+    updated = false;
   }
 
-  return mustBeUpdated;
+  return updated;
 }
 
 void Config::mirrorConfigData()
