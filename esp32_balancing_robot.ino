@@ -124,20 +124,26 @@ void commTaskHandler(void * pvParameters)
 {
   BluetoothSerial btInstance;
   btInstance.begin("ESP32-BalancingRobot");
+  CommandContainer cmdContainer;
   
   for(;;)
   {
     if(btInstance.available())
     {
-      Cmd::requestHandler(btInstance.read());
-      
-      //int value = btInstance.read();
-      //Serial1.print("Data: "); Serial1.print(value); Serial1.println();
+      if(Cmd::requestHandler(btInstance.read(), &cmdContainer))
+      {
+        Serial1.print("command string: "); Serial1.println(cmdContainer.commandString);
+        Serial1.print("group id: "); Serial1.println(cmdContainer.groupId);
+        Serial1.print("command id: "); Serial1.println(cmdContainer.commandId);
+        Serial1.print("value: "); Serial1.println(cmdContainer.parameter);
+
+        /*
+         * TODO process request and transmit a response
+         */
+      }
     }
     else
-    {
       delay(10);
-    }
   }
 }
 
