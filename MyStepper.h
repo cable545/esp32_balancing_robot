@@ -16,7 +16,7 @@
 #define LEFT_STEPPER_FORWARD_DIR_LEVEL 1
 #define NO_DIRECTION -1
 
-#define MIN_TIMER_PERIOD 150
+#define MIN_TIMER_PERIOD 150 // means 1 step every 75 us
 
 class MyStepper
 {

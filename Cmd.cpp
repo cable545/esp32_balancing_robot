@@ -1,10 +1,8 @@
 #include "Arduino.h"
 #include "Cmd.h"
+#include "Pid.h"
 
-#define CR                        0x0D
-#define LF                        0x0A
-
-#define PAYLOAD_LENGTH            12
+#define PAYLOAD_INDEX             COMMAND_LENGTH + 1
 
 #define START_GET_CHAR            0x47
 #define START_SET_CHAR            0x53
@@ -24,13 +22,27 @@ typedef struct
 }Command;
 
 static Command commands[] = {
-  {"SCOPGAIN", GENERAL_GROUP, SET_CONTROLLER_P_GAIN},
-  {"GCOPGAIN", GENERAL_GROUP, GET_CONTROLLER_P_GAIN},
-  {"SCOIGAIN", GENERAL_GROUP, SET_CONTROLLER_I_GAIN},
-  {"GCOIGAIN", GENERAL_GROUP, GET_CONTROLLER_I_GAIN}, 
+  {"SCOPGAIN", SET_REQUEST_GROUP, SET_CONTROLLER_P_GAIN},
+  {"GCOPGAIN", GET_REQUEST_GROUP, GET_CONTROLLER_P_GAIN},
+  {"SCOIGAIN", SET_REQUEST_GROUP, SET_CONTROLLER_I_GAIN},
+  {"GCOIGAIN", GET_REQUEST_GROUP, GET_CONTROLLER_I_GAIN},
+  {"SCODGAIN", SET_REQUEST_GROUP, SET_CONTROLLER_D_GAIN},
+  {"GCODGAIN", GET_REQUEST_GROUP, GET_CONTROLLER_D_GAIN},
+  {"SCONILIM", SET_REQUEST_GROUP, SET_CONTROLLER_I_LIMIT},
+  {"GCONILIM", GET_REQUEST_GROUP, GET_CONTROLLER_I_LIMIT},
+  {"SSTOCONF", SET_REQUEST_GROUP, SET_STORE_CONFIG_IN_FLASH},
+  {"GCOLOTIM", GET_REQUEST_GROUP, GET_CONTROLLER_LOOP_TIME},
 };
 
-bool Cmd::requestHandler(char data, CommandContainer* cmdContainer)
+extern uint32_t elapsedMicros;
+
+Cmd::Cmd(Config *p_config, QueueHandle_t *p_queue)
+{
+  p_myConfig = p_config;
+  p_messageQueue = p_queue;
+}
+
+bool Cmd::requestHandler(char data, CommandContainer *cmdContainer)
 {
   static char state = IDLE_STATE;
   static int characterCounter = 0;
@@ -77,10 +89,23 @@ bool Cmd::requestHandler(char data, CommandContainer* cmdContainer)
     case PAYLOAD_STATE:
       payload[characterCounter++] = data;
 
-      if(characterCounter == 2)
+      // command without parameter
+      if(characterCounter == 2 && payload[0] == CR && payload[1] == LF)
       {
-        if(payload[0] == 0x0a && payload[1] == 0x0d)
-          state = IDLE_STATE;
+        if(command[0] == START_GET_CHAR)
+        {
+          cmdContainer->commandString = command;
+          
+          if(!findGrpAndCmdId(command, cmdContainer))
+          {
+            cmdContainer->groupId = DEFAULT_GROUP;
+            cmdContainer->commandId = DEFAULT_COMMAND;
+          }
+          
+          newCommandParsed = true;
+        }
+        
+        state = IDLE_STATE;
       }
       else if(characterCounter > 2)
       {
@@ -88,6 +113,7 @@ bool Cmd::requestHandler(char data, CommandContainer* cmdContainer)
         {
           cmdContainer->commandString = command;
           cmdContainer->parameter = charArrayToFloat(payload, characterCounter - 2);
+          cmdContainer->response = cmdContainer->parameter;
           
           if(!findGrpAndCmdId(command, cmdContainer))
           {
@@ -107,13 +133,13 @@ bool Cmd::requestHandler(char data, CommandContainer* cmdContainer)
   return newCommandParsed;
 }
 
-void Cmd::resetArray(char* commandArray, uint32_t length)
+void Cmd::resetArray(char *commandArray, uint32_t length)
 {
   for(int i = 0; i < length; i++)
     commandArray[i] = 0;
 }
 
-float Cmd::charArrayToFloat(char* startAddress, uint32_t length)
+float Cmd::charArrayToFloat(char *startAddress, uint32_t length)
 {
   char buffer[PAYLOAD_LENGTH - 2] = {0};
   float result;
@@ -133,7 +159,7 @@ float Cmd::charArrayToFloat(char* startAddress, uint32_t length)
   return result;
 }
 
-bool Cmd::findGrpAndCmdId(char* commandString, CommandContainer* cmdContainer)
+bool Cmd::findGrpAndCmdId(char *commandString, CommandContainer *cmdContainer)
 {
   bool assigned = false;
   
@@ -150,4 +176,112 @@ bool Cmd::findGrpAndCmdId(char* commandString, CommandContainer* cmdContainer)
   }
 
   return assigned;
+}
+
+void Cmd::processRequest(CommandContainer *cmdContainer)
+{
+  switch(cmdContainer->groupId)
+  {
+    case GET_REQUEST_GROUP:
+      getRequestGroupHandler(cmdContainer);
+      
+      break;
+    case SET_REQUEST_GROUP:
+      setRequestGroupHandler(cmdContainer);
+      
+      break; 
+    default:
+      break;  
+  }
+}
+
+void Cmd::buildResponse(CommandContainer *cmdContainer, char *responseBuffer)
+{
+  strcpy(responseBuffer, cmdContainer->commandString);  
+  responseBuffer[COMMAND_LENGTH] = SET_SEPERATOR;
+  sprintf(&responseBuffer[PAYLOAD_INDEX], "%f", cmdContainer->response);
+}
+
+void Cmd::getRequestGroupHandler(CommandContainer *cmdContainer)
+{
+  switch(cmdContainer->commandId)
+  {
+    case GET_CONTROLLER_P_GAIN:
+      cmdContainer->response = p_myConfig->getPGainAngle();
+      
+      break;
+    case GET_CONTROLLER_I_GAIN:
+      cmdContainer->response = p_myConfig->getIGainAngle();
+    
+      break;
+    case GET_CONTROLLER_D_GAIN:
+      cmdContainer->response = p_myConfig->getDGainAngle();
+
+      break;
+    case GET_CONTROLLER_I_LIMIT:
+      cmdContainer->response = p_myConfig->getILimitAngle();
+    
+      break;
+    case GET_CONTROLLER_LOOP_TIME:
+      cmdContainer->response = elapsedMicros;
+      
+      break;  
+    default:
+      break;  
+  }
+}
+
+void Cmd::setRequestGroupHandler(CommandContainer *cmdContainer)
+{
+  switch(cmdContainer->commandId)
+  {
+    case SET_CONTROLLER_P_GAIN:
+      p_myConfig->setPGainAngle(cmdContainer->parameter);
+      
+      break;
+    case SET_CONTROLLER_I_GAIN:
+      p_myConfig->setIGainAngle(cmdContainer->parameter);
+      
+      break;
+    case SET_CONTROLLER_D_GAIN:
+      p_myConfig->setDGainAngle(cmdContainer->parameter);
+      
+      break;
+    case SET_CONTROLLER_I_LIMIT:
+      p_myConfig->setILimitAngle(cmdContainer->parameter);
+
+      break;
+    case SET_STORE_CONFIG_IN_FLASH:
+      cmdContainer->response = p_myConfig->update();
+      putPidDataInQueue();
+
+      break;
+    default:
+      break;  
+  }
+}
+
+void Cmd::putPidDataInQueue()
+{
+  PidGainContainer pidGainContainer;
+  
+  pidGainContainer.pGainAngle = p_myConfig->getPGainAngle();
+  pidGainContainer.iGainAngle = p_myConfig->getIGainAngle();
+  pidGainContainer.dGainAngle = p_myConfig->getDGainAngle();
+  pidGainContainer.iLimitAngle = p_myConfig->getILimitAngle();
+  
+  xQueueSend(*p_messageQueue, &pidGainContainer.pGainAngle, portMAX_DELAY);
+  xQueueSend(*p_messageQueue, &pidGainContainer.iGainAngle, portMAX_DELAY);
+  xQueueSend(*p_messageQueue, &pidGainContainer.dGainAngle, portMAX_DELAY);
+  xQueueSend(*p_messageQueue, &pidGainContainer.iLimitAngle, portMAX_DELAY);
+}
+
+bool Cmd::isSetRequest(CommandContainer *cmdContainer)
+{
+  return cmdContainer->groupId % 2 == 0 ? true : false;
+}
+
+bool Cmd::isGetRequest(CommandContainer *cmdContainer)
+{
+  return cmdContainer->groupId % 2 > 0 ? true : false;
 }

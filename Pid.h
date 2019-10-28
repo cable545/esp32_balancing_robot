@@ -1,12 +1,21 @@
 #ifndef _PID_H
 #define _PID_H
 
+typedef struct
+{
+  float pGainAngle;
+  float iGainAngle;
+  float dGainAngle;
+  float iLimitAngle;
+} PidGainContainer;
+
 class Pid
 {
   public:
     Pid(float p, float i, float d, float iLimit);
     float updatePID(float target, float current, float dt);
     void resetPID();
+    void setGains(float p, float i, float d);
     
     void setP(float p) {P = p;}
     void setI(float i) {I = i;}

@@ -70,6 +70,8 @@ void MyStepper::setDirection(uint8_t dir)
 
 void MyStepper::initTimer(void (*timerIntHandler)(void))
 {
+  check here 
+  
   hwTimer = timerBegin(timerNr, 40, true);        // prescaler 40 set timer frequency to 2Mhz, counts up
   timerAttachInterrupt(hwTimer, timerIntHandler, true);
   timerAlarmWrite(hwTimer, 2000000, true);       // alarmvalue and autoreload

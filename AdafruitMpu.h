@@ -165,6 +165,7 @@ public:
   void accRead(void);
   void accCalcAngles(void);
   void gyroRead(void);
+  void gyroReadX(void);
   void gyroCalcAngles(float deltaT);
   ImuData_t getAccData(void) {return accData;}
   ImuData_t getGyroData(void) {return gyroData;}

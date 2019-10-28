@@ -5,6 +5,7 @@ Pid::Pid(float p, float i, float d, float iLimit)
 {
   P = p;
   I = i;
+  D = d;
   I_limit = iLimit;
   integratedError = 0;
   lastError = 0;
@@ -31,4 +32,9 @@ void Pid::resetPID()
 {
   integratedError = 0; 
   lastError = 0; 
+}
+
+void Pid::setGains(float p, float i, float d)
+{
+  
 }

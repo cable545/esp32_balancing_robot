@@ -1,7 +1,7 @@
 #include <Wire.h>
 #include "AdafruitMpu.h"
 
-#define TAU 0.0796
+#define TAU 0.085//0.0796
 
 extern float DELTA_T;
 
@@ -71,11 +71,11 @@ bool AdafruitMpu::gyroInit(void)
     return false;
 
   /*
-   *  enable X and Y axis, power mode -> normal,
+   *  enable only X axis, power mode -> normal,
    *  output data rate -> 800 Hz without cut off frequency
    *  => 11101111
    */ 
-  gyroWriteReg(GYRO_REGISTER_CTRL_REG1, 0xEF);
+  gyroWriteReg(GYRO_REGISTER_CTRL_REG1, 0xEA);
 
   // Full scale selection to 500 dps
   gyroWriteReg(GYRO_REGISTER_CTRL_REG4, 0x10);
@@ -183,7 +183,7 @@ void AdafruitMpu::gyroRead(void)
   zlo = Wire.read();
   zhi = Wire.read();
 
-// Shift values to create properly formed integer (low byte first)
+  // Shift values to create properly formed integer (low byte first)
   gyroData.x = (int16_t)(xlo | (xhi << 8));
   gyroData.y = (int16_t)(ylo | (yhi << 8));
   gyroData.z = (int16_t)(zlo | (zhi << 8));
@@ -192,6 +192,26 @@ void AdafruitMpu::gyroRead(void)
   gyroData.x *= GYRO_SENSITIVITY_500DPS;
   gyroData.y *= GYRO_SENSITIVITY_500DPS;
   gyroData.z *= GYRO_SENSITIVITY_500DPS;
+}
+
+void AdafruitMpu::gyroReadX(void)
+{
+  uint8_t xhi, xlo;
+
+  Wire.beginTransmission(L3GD20H_GYRO_ADDRESS);
+  // Make sure to set address auto-increment bit
+  Wire.write(GYRO_REGISTER_OUT_X_L | 0x80);
+  Wire.endTransmission();
+  Wire.requestFrom(L3GD20H_GYRO_ADDRESS, (uint8_t)2);
+
+  xlo = Wire.read();
+  xhi = Wire.read();
+
+  // Shift values to create properly formed integer (low byte first)
+  gyroData.x = (int16_t)(xlo | (xhi << 8));
+
+  // Compensate values depending on the resolution
+  gyroData.x *= GYRO_SENSITIVITY_500DPS;
 }
 
 void AdafruitMpu::gyroCalcAngles(float deltaT)
