@@ -10,6 +10,7 @@
 #include "Pid.h"
 #include "Cmd.h"
 #include "Config.h"
+#include "Sonar.h"
 
 #define I2Cclock 400000
 

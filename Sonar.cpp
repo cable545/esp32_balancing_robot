@@ -1,6 +1,6 @@
 #include "Sonar.h"
 
-/*
+
 Sonar::Sonar(uint8_t address)
 {
   i2cAddress = address;
@@ -9,11 +9,10 @@ Sonar::Sonar(uint8_t address)
 
 uint32_t Sonar::readSensor()
 {
-  
+ return 0;  
 }
   
-void Sonar::init()
+bool Sonar::init()
 {
-  
+  return true;
 }
-*/
