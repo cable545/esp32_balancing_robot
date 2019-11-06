@@ -3,6 +3,8 @@
 
 #include <Wire.h>
 
+#define ADAFRUIT_I2C_CLK 400000
+
 #define DEG_RAD 0.017453292
 #define RAD_DEG 57.29577951
 

@@ -27,6 +27,9 @@ bool AdafruitMpu::init(void)
 {
   bool result = false;
 
+  Wire.begin();
+  Wire.setClock(ADAFRUIT_I2C_CLK);
+
   result = accInit();
   result = gyroInit();
 
@@ -35,8 +38,6 @@ bool AdafruitMpu::init(void)
 
 bool AdafruitMpu::accInit(void)
 {
-  Wire.begin();
-
   // Xen, Yen, Zen, normal mode and 1344 Hz update rate -> 10010111
   accWriteReg(LSM303_REGISTER_ACC_CTRL_REG1_A, 0x97);
 
@@ -54,8 +55,6 @@ bool AdafruitMpu::accInit(void)
 
 bool AdafruitMpu::gyroInit(void)
 {
-  Wire.begin();
-  
   gyroData.x = 0;
   gyroData.y = 0;
   gyroData.z = 0;

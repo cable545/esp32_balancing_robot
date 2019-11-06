@@ -14,7 +14,7 @@
 
 #define I2Cclock 400000
 
-uint32_t cpuClock;
+uint32_t cpuClock, i;
 uint32_t timeMeasure = 0, timeMeasure2 = 0, timeMeasure3 = 0, lastTimeMeasure = 0, elapsedMicros = 0;
 float deltaT = 0;
 int ledPin = 13;
@@ -33,31 +33,32 @@ MyStepper& leftStepper = MyStepper::getLeftStepper();
 MyStepper& rightStepper = MyStepper::getRightStepper();
 
 TaskHandle_t commTask;
+Sonar sonar;
 
 void setup()
 {
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, HIGH);
   
-  Serial1.begin(115200);
- 
-  Wire.begin();
+  Serial.begin(115200);
 
-  //searchForDevices();
+  //cpuClock = getCpuFrequencyMhz(); //Get CPU clock
+  searchForDevices();
 
+  sonar.init();
+
+  /*
   messageQueue = xQueueCreate(queueSize, sizeof(float));
 
   if(messageQueue == NULL){
-    Serial1.println("Error creating the message queue");
+    Serial.println("Error creating the message queue");
   }
 
   if(mpu.init())
-    Serial1.println("Mpu initialized");
+    Serial.println("Mpu initialized");
   else
-    Serial1.println("Mpu initialization failed");
-
-  //cpuClock = getCpuFrequencyMhz(); //Get CPU clock
-
+    Serial.println("Mpu initialization failed");
+  
   leftStepper.stepperTimerStart();
   leftStepper.setTimerValue(512000);
   rightStepper.stepperTimerStart();
@@ -72,27 +73,15 @@ void setup()
     &commTask,
     0
   );
-  
-
-/*  
-  Serial.begin(115200);
-  Serial.println("Starting"); // will be shown in the terminal
-  Serial.setDebugOutput(true);
-
-
-  esp_log_level_set("*", ESP_LOG_VERBOSE);
-  ESP_LOGD("EXAMPLE", "This doesn't show");
-
-  log_v("Verbose");
-  log_d("Debug");
-  log_i("Info");
-  log_w("Warning"); 
-  log_e("Error");
   */
 }
 
 void loop()
 {
+  uint32_t range = sonar.read();
+
+  Serial.print("R");Serial.print(i++);Serial.print(": ");Serial.println(range);
+  /*
   PidGainContainer pidGainContainer;
   
   while(true)
@@ -115,6 +104,7 @@ void loop()
 
   while(true)
   {
+    
     // imu needs ~1700us for complete roll angle calculation
     mpu.accRead();
     mpu.gyroReadX();
@@ -160,7 +150,6 @@ void loop()
     ledAddTime += deltaT;
     stablePositionTime += deltaT;
     lastTimeMeasure = timeMeasure;
-      
     
     if(ledAddTime >= 1.0)
     {
@@ -169,6 +158,7 @@ void loop()
       ledAddTime = 0;
     }
   }
+  */
 }
 
 void commTaskHandler(void * pvParameters)
@@ -218,6 +208,7 @@ void commTaskHandler(void * pvParameters)
   }
 }
 
+/* only runs with default i2c speed? */
 void searchForDevices()
 {  
   uint8_t cnt = 0;
