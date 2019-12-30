@@ -199,6 +199,9 @@ void Cmd::buildResponse(CommandContainer *cmdContainer, char *responseBuffer)
 {
   strcpy(responseBuffer, cmdContainer->commandString);  
   responseBuffer[COMMAND_LENGTH] = SET_SEPERATOR;
+
+  // TODO dependent from parameter type build response
+  // at the moment response is always a decimal number
   sprintf(&responseBuffer[PAYLOAD_INDEX], "%f", cmdContainer->response);
 }
 
