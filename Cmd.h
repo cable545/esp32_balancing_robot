@@ -20,6 +20,7 @@
 #define GET_CONTROLLER_D_GAIN 0x03
 #define GET_CONTROLLER_I_LIMIT 0x04
 #define GET_CONTROLLER_LOOP_TIME 0x05
+#define GET_LAST_RESET_REASON 0x06
 
 /* ---------------------- SET_REQUEST_GROUP ---------------------*/
 #define SET_REQUEST_GROUP 0x02

@@ -1,3 +1,5 @@
+#include <rom/rtc.h>
+
 #include "Arduino.h"
 #include "Cmd.h"
 #include "Pid.h"
@@ -32,6 +34,7 @@ static Command commands[] = {
   {"GCONILIM", GET_REQUEST_GROUP, GET_CONTROLLER_I_LIMIT},
   {"SSTOCONF", SET_REQUEST_GROUP, SET_STORE_CONFIG_IN_FLASH},
   {"GCOLOTIM", GET_REQUEST_GROUP, GET_CONTROLLER_LOOP_TIME},
+  {"GRESREAS", GET_REQUEST_GROUP, GET_LAST_RESET_REASON},
 };
 
 extern uint32_t elapsedMicros;
@@ -228,7 +231,14 @@ void Cmd::getRequestGroupHandler(CommandContainer *cmdContainer)
     case GET_CONTROLLER_LOOP_TIME:
       cmdContainer->response = elapsedMicros;
       
-      break;  
+      break;
+    case GET_LAST_RESET_REASON:
+      if(cmdContainer->parameter < 0.0 || cmdContainer->parameter > 1.0)
+        cmdContainer->parameter = 0.0;
+    
+      cmdContainer->response = rtc_get_reset_reason((uint32_t)cmdContainer->parameter);
+      
+      break;
     default:
       break;  
   }

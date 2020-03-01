@@ -45,9 +45,9 @@ void setup()
   //cpuClock = getCpuFrequencyMhz(); //Get CPU clock
   searchForDevices();
 
-  sonar.init();
+  //sonar.init();
 
-  /*
+  
   messageQueue = xQueueCreate(queueSize, sizeof(float));
 
   if(messageQueue == NULL){
@@ -73,15 +73,16 @@ void setup()
     &commTask,
     0
   );
-  */
+  
 }
 
 void loop()
 {
-  uint32_t range = sonar.read();
+  //uint32_t range = sonar.read();
+  // float motorSpeed = 0.0;
 
-  Serial.print("R");Serial.print(i++);Serial.print(": ");Serial.println(range);
-  /*
+  //Serial.print("R");Serial.print(i++);Serial.print(": ");Serial.println(range);
+  
   PidGainContainer pidGainContainer;
   
   while(true)
@@ -104,7 +105,6 @@ void loop()
 
   while(true)
   {
-    
     // imu needs ~1700us for complete roll angle calculation
     mpu.accRead();
     mpu.gyroReadX();
@@ -124,6 +124,7 @@ void loop()
       {
         leftStepper.enableInterrupt();
         rightStepper.enableInterrupt();
+        //float targetAngle = speedPID.updatePID(0.0, motorSpeed, deltaT); 
         float motorSpeed = anglePID.updatePID(0.0, rollAngle, deltaT);
         motorSpeed *= 3600;
         leftStepper.setMotorSpeed(motorSpeed);
@@ -158,7 +159,6 @@ void loop()
       ledAddTime = 0;
     }
   }
-  */
 }
 
 void commTaskHandler(void * pvParameters)
@@ -192,7 +192,6 @@ void commTaskHandler(void * pvParameters)
     {
       if(cmd.requestHandler(btInstance.read(), &cmdContainer))
       {
-        
         // TODO process request and transmit a response
         // C:\Users\xxxxx\AppData\Local\Arduino15\packages\esp32\hardware\esp32\1.0.2
         cmd.processRequest(&cmdContainer);
