@@ -165,9 +165,12 @@ public:
   bool init(void);
  
   void accRead(void);
+  void accReadComp(void);
   void accCalcAngles(void);
   void gyroRead(void);
+  void gyroReadComp(void);
   void gyroReadX(void);
+  void gyroReadXComp(void);
   void gyroCalcAngles(float deltaT);
   ImuData_t getAccData(void) {return accData;}
   ImuData_t getGyroData(void) {return gyroData;}
@@ -175,6 +178,10 @@ public:
   EulerData_t getGyroEulerData(void) {return gyroEulerData;}
   float calculatePitchAngle(float deltaT);
   float calculateRollAngle(float deltaT);
+  void accOffsetCalc(ImuData_t* accOffsets);
+  void gyroOffsetCalc(ImuData_t* gyroOffsets);
+  void gyroXOffsetCalc(ImuData_t* gyroOffsets);
+  void executeCalibration(ImuData_t* gyroOffsets, ImuData_t* accOffsets);
   
 private:
   ImuData_t accData;

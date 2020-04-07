@@ -13,7 +13,7 @@ class Pid
 {
   public:
     Pid(float p, float i, float d, float iLimit);
-    float updatePID(float target, float current, float dt);
+    float updatePID(float target, float current);
     void resetPID();
     void setGains(float p, float i, float d);
     

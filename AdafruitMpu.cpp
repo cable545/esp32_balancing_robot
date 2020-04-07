@@ -3,6 +3,9 @@
 
 #define TAU 0.085//0.0796
 
+#define ACC_OFFSET_LOOPS 10000
+#define GYRO_OFFSET_LOOPS 10000
+
 extern float DELTA_T;
 
 static float _lsm303Accel_MG_LSB     = 0.001F;   // 1, 2, 4 or 12 mg per lsb
@@ -13,8 +16,8 @@ static float cal_matrix[3][3]={{ 1.044623, -0.011422, -0.004677},
   
 static float cal_offsets[3] = {-16.127077, 83.156128, 64.799910};
 
-float x_gyro_offset = -109.564072, y_gyro_offset = -43.924377, z_gyro_offset = -139.007294;
-float x_acc_offset = -0.002118, y_acc_offset = 0.039259, z_acc_offset = 0.039753;
+float x_gyro_offset = -2.218852, y_gyro_offset = -43.924377, z_gyro_offset = -139.007294;
+float x_acc_offset = -0.006899, y_acc_offset = 0.008814, z_acc_offset = 0.023406;
 
 AdafruitMpu::AdafruitMpu(void)
 {
@@ -72,7 +75,7 @@ bool AdafruitMpu::gyroInit(void)
   /*
    *  enable only X axis, power mode -> normal,
    *  output data rate -> 800 Hz without cut off frequency
-   *  => 11101111
+   *  => 11101010
    */ 
   gyroWriteReg(GYRO_REGISTER_CTRL_REG1, 0xEA);
 
@@ -106,6 +109,8 @@ void AdafruitMpu::accWriteReg(uint8_t regAddress, uint8_t value)
 
 void AdafruitMpu::accRead(void)
 {
+  int16_t accX, accY, accZ;
+  
   // Read the accelerometer
   Wire.beginTransmission((uint8_t)LSM303_ADDRESS_ACCEL);
   Wire.write(LSM303_REGISTER_ACC_OUT_X_L_A | 0x80);
@@ -113,8 +118,7 @@ void AdafruitMpu::accRead(void)
   Wire.requestFrom((uint8_t)LSM303_ADDRESS_ACCEL, (uint8_t)6);
 
   // Wait around until enough data is available
-  while (Wire.available() < 6);
-
+ // while (Wire.available() < 6);
   uint8_t xlo = Wire.read();
   uint8_t xhi = Wire.read();
   uint8_t ylo = Wire.read();
@@ -123,13 +127,13 @@ void AdafruitMpu::accRead(void)
   uint8_t zhi = Wire.read();
 
   // Shift values to create properly formed integer (low byte first)
-  accData.x = (int16_t)(xlo | (xhi << 8)) >> 4;
-  accData.y = (int16_t)(ylo | (yhi << 8)) >> 4;
-  accData.z = (int16_t)(zlo | (zhi << 8)) >> 4;
+  accX = (int16_t)(xlo | (xhi << 8)) >> 2;
+  accY = (int16_t)(ylo | (yhi << 8)) >> 2;
+  accZ = (int16_t)(zlo | (zhi << 8)) >> 2;
 
-  accData.x *= _lsm303Accel_MG_LSB;
-  accData.y *= _lsm303Accel_MG_LSB;
-  accData.z *= _lsm303Accel_MG_LSB;
+  accData.x = (float)(accX * _lsm303Accel_MG_LSB);
+  accData.y = (float)(accY * _lsm303Accel_MG_LSB);
+  accData.z = (float)(accZ * _lsm303Accel_MG_LSB);
 }
 
 void AdafruitMpu::accCalcAngles(void)
@@ -195,7 +199,7 @@ void AdafruitMpu::gyroRead(void)
 
 void AdafruitMpu::gyroReadX(void)
 {
-  uint8_t xhi, xlo;
+  int16_t gyroX;
 
   Wire.beginTransmission(L3GD20H_GYRO_ADDRESS);
   // Make sure to set address auto-increment bit
@@ -203,14 +207,14 @@ void AdafruitMpu::gyroReadX(void)
   Wire.endTransmission();
   Wire.requestFrom(L3GD20H_GYRO_ADDRESS, (uint8_t)2);
 
-  xlo = Wire.read();
-  xhi = Wire.read();
+  uint8_t xlo = Wire.read();
+  uint8_t xhi = Wire.read();
 
   // Shift values to create properly formed integer (low byte first)
-  gyroData.x = (int16_t)(xlo | (xhi << 8));
+  gyroX = (int16_t)(xlo | (xhi << 8));
 
   // Compensate values depending on the resolution
-  gyroData.x *= GYRO_SENSITIVITY_500DPS;
+  gyroData.x = (float)(gyroX * GYRO_SENSITIVITY_500DPS);
 }
 
 void AdafruitMpu::gyroCalcAngles(float deltaT)
@@ -239,143 +243,89 @@ float AdafruitMpu::calculateRollAngle(float deltaT)
   return eulerAngles.roll;
 }
 
-///*
-// *  calculates the offset of the accelerometer values x, y, z
-// */
-//uint8 lsm303_acc_offset_calc(int add_index)
-//{
-//  unsigned int index;
-//  Imu_Data values;
-//  
-//  // offset calculation
-//  for(index = 0; index < ACC_OFFSET_LOOPS; index++)
-//  {
-//    tooglesLED(GREEN_OB_LED);
-//    tooglesLED(RED_OB_LED);
-//    
-//    while(lsm303_acc_read(&values) == FALSE);
-//    x_acc_offset += values.x;
-//    y_acc_offset += values.y;
-//    z_acc_offset += (values.z - 1.0);    //z-value minus 1g
-//    
-//    #ifdef BLUETOOTH_ON
-//    send_debug_data(add_index + index);
-//    #endif
-//  }
-//  
-//  x_acc_offset /= ACC_OFFSET_LOOPS;
-//  y_acc_offset /= ACC_OFFSET_LOOPS;
-//  z_acc_offset /= ACC_OFFSET_LOOPS;
-//  
-//  return TRUE;
-//}
-//
-///* 
-// *  reads a new set of offset compensated accelerometer values
-// */ 
-//uint8 lsm303_acc_read_comp(Imu_Data* values)
-//{
-//  if(lsm303_acc_read(values) == TRUE)
-//  {
-//    values->x -= x_acc_offset;
-//    values->y -= y_acc_offset;
-//    values->z -= z_acc_offset;
-//    
-//    return TRUE;
-//  }
-//  
-//  return FALSE;
-//}
+void AdafruitMpu::accOffsetCalc(ImuData_t* accOffsets)
+{
+  accOffsets->x = 0;
+  accOffsets->y = 0;
+  accOffsets->z = 0;
+  
+  for(uint32_t index = 0; index < ACC_OFFSET_LOOPS; index++)
+  {
+    accRead();
+    accOffsets->x += accData.x;
+    accOffsets->y += accData.y;
+    accOffsets->z += (accData.z - 1.0);    //z-value minus 1g
+  }
+  
+  accOffsets->x /= ACC_OFFSET_LOOPS;
+  accOffsets->y /= ACC_OFFSET_LOOPS;
+  accOffsets->z /= ACC_OFFSET_LOOPS;
+}
 
-///*
-// *  reads the x, y, and z value and puts them in the given variables
-// */ 
-//uint8 l3gd_gyro_read(Imu_Data* values)
-//{
-//  int16 gyro_x, gyro_y, gyro_z;
-//  uint8 tmp;
-//  
-//  // read status register and check if data available
-//  if((l3gd_gyro_read_reg(GYRO_REGISTER_STATUS_REG, &tmp) == TRUE) && ((tmp & 0x3) == 0x3))
-//  {
-//    if(l3gd_gyro_read_reg(GYRO_REGISTER_OUT_X_L, &tmp) == FALSE) return FALSE;
-//    gyro_x = tmp;
-//    if(l3gd_gyro_read_reg(GYRO_REGISTER_OUT_X_H, &tmp) == FALSE) return FALSE;
-//    gyro_x |= tmp << 8;
-//    
-//    if(l3gd_gyro_read_reg(GYRO_REGISTER_OUT_Y_L, &tmp) == FALSE) return FALSE;
-//    gyro_y = tmp;
-//    if(l3gd_gyro_read_reg(GYRO_REGISTER_OUT_Y_H, &tmp) == FALSE) return FALSE;
-//    gyro_y |= tmp << 8;
-//  
-//    if(l3gd_gyro_read_reg(GYRO_REGISTER_OUT_Z_L, &tmp) == FALSE) return FALSE;
-//    gyro_z = tmp;
-//    if(l3gd_gyro_read_reg(GYRO_REGISTER_OUT_Z_H, &tmp) == FALSE) return FALSE;
-//    gyro_z |= tmp << 8;
-//    
-//    values->x = gyro_x;
-//    values->y = -gyro_y; //workaround for wrong axis sign
-//    values->z = -gyro_z; //workaround for wrong axis sign
-//  
-//    return TRUE;
-//  }
-//  
-//  return FALSE;
-//}
-//
-///* 
-// *  read a new set of offset compensated gyro values
-// */ 
-//uint8 l3gd_gyro_read_comp(Imu_Data* values)
-//{
-//  if(l3gd_gyro_read(values) == TRUE)
-//  {
-//    values->x -= x_gyro_offset;
-//    values->y -= y_gyro_offset;
-//    values->z -= z_gyro_offset;
-//    
-//    values->x *= GYRO_SENSITIVITY_500DPS;
-//    values->y *= GYRO_SENSITIVITY_500DPS;
-//    values->z *= GYRO_SENSITIVITY_500DPS;
-//    
-//    return TRUE;
-//  }
-//  
-//  return FALSE;
-//}
-//
-///* 
-// *  calculates the offset of the gyro values
-// */ 
-//uint8 l3gd_gyro_offset_calc(int add_index)
-//{
-//  unsigned int index;
-//  Imu_Data values;
-//  
-//  // offset calculation
-//  for(index = 0; index < GYRO_OFFSET_LOOPS; index++)
-//  {
-//    tooglesLED(GREEN_OB_LED);
-//    tooglesLED(RED_OB_LED);
-//    
-//    while(l3gd_gyro_read(&values) == FALSE);
-//    x_gyro_offset += values.x;
-//    y_gyro_offset += values.y;
-//    z_gyro_offset += values.z;
-//    
-//    #ifdef BLUETOOTH_ON
-//    send_debug_data(add_index + index);
-//    #endif
-//  }
-//  
-//  x_gyro_offset /= GYRO_OFFSET_LOOPS;
-//  y_gyro_offset /= GYRO_OFFSET_LOOPS;
-//  z_gyro_offset /= GYRO_OFFSET_LOOPS;
-//  
-//  return TRUE;
-//}
-//
-//
+void AdafruitMpu::accReadComp(void)
+{
+  accRead();
+  accData.x -= x_acc_offset;
+  accData.y -= y_acc_offset;
+  accData.z -= z_acc_offset;
+}
+
+void AdafruitMpu::gyroOffsetCalc(ImuData_t* gyroOffsets)
+{
+  gyroOffsets->x = 0;
+  gyroOffsets->y = 0;
+  gyroOffsets->z = 0;
+  
+  for(uint32_t index = 0; index < GYRO_OFFSET_LOOPS; index++)
+  {
+    gyroRead();
+    gyroOffsets->x += gyroData.x;
+    gyroOffsets->y += gyroData.y;
+    gyroOffsets->z += gyroData.z;
+  }
+  
+  gyroOffsets->x /= GYRO_OFFSET_LOOPS;
+  gyroOffsets->y /= GYRO_OFFSET_LOOPS;
+  gyroOffsets->z /= GYRO_OFFSET_LOOPS;
+}
+
+void AdafruitMpu::gyroXOffsetCalc(ImuData_t* gyroOffsets)
+{
+  gyroOffsets->x = 0;
+  
+  for(uint32_t index = 0; index < GYRO_OFFSET_LOOPS; index++)
+  {
+    gyroReadX();
+    gyroOffsets->x += gyroData.x;
+  }
+  
+  gyroOffsets->x /= GYRO_OFFSET_LOOPS;
+}
+
+void AdafruitMpu::gyroReadComp(void)
+{
+  gyroRead();
+  gyroData.x -= x_gyro_offset;
+  gyroData.y -= y_gyro_offset;
+  gyroData.z -= z_gyro_offset;
+}
+
+void AdafruitMpu::gyroReadXComp(void)
+{
+  gyroReadX();
+  gyroData.x -= x_gyro_offset;
+}
+
+void AdafruitMpu::executeCalibration(ImuData_t* gyroOffsets, ImuData_t* accOffsets)
+{
+  digitalWrite(13, HIGH);
+  
+  gyroXOffsetCalc(gyroOffsets);
+  accOffsetCalc(accOffsets);
+  
+  digitalWrite(13, LOW);
+}
+
 ///*-----------------------------------------------------------------------------------------------------*/
 ///*                                  functions for the adafruit modul                                   */
 ///*-----------------------------------------------------------------------------------------------------*/
@@ -400,19 +350,7 @@ float AdafruitMpu::calculateRollAngle(float deltaT)
 ////    printf("Err gyr read\r\n");
 //}
 //
-//void start_calibration(void)
-//{
-//  clearLED(RED_OB_LED);
-//  lsm303_acc_offset_calc(0);
-//  l3gd_gyro_offset_calc(ACC_OFFSET_LOOPS);
-//  
-//  #ifdef BLUETOOTH_ON
-//  send_offset_value_data();
-//  #endif
-//    
-//  clearLED(GREEN_OB_LED);
-//  setLED(RED_OB_LED);
-//}
+
 //
 //
 //

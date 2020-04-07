@@ -1,6 +1,9 @@
 #include <Wire.h>
 #include <BluetoothSerial.h>
 #include <Preferences.h>
+
+#include <rom/rtc.h>
+
 #include "string.h"
 
 #include "esp32-hal-cpu.h"
@@ -12,6 +15,7 @@
 #include "Config.h"
 #include "Sonar.h"
 
+#define Serial Serial1
 #define I2Cclock 400000
 
 uint32_t cpuClock, i;
@@ -39,8 +43,9 @@ void setup()
 {
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, HIGH);
-  
+
   Serial.begin(115200);
+  Serial.println("initialized");
 
   //cpuClock = getCpuFrequencyMhz(); //Get CPU clock
   searchForDevices();
@@ -58,7 +63,7 @@ void setup()
     Serial.println("Mpu initialized");
   else
     Serial.println("Mpu initialization failed");
-  
+
   leftStepper.stepperTimerStart();
   leftStepper.setTimerValue(512000);
   rightStepper.stepperTimerStart();
@@ -73,18 +78,22 @@ void setup()
     &commTask,
     0
   );
-  
+
+  Serial.println("end setup");
 }
 
 void loop()
 {
+  ImuData_t gyroOffsets, accOffsets;
+  uint32_t error = 0;
+  
   //uint32_t range = sonar.read();
   // float motorSpeed = 0.0;
 
   //Serial.print("R");Serial.print(i++);Serial.print(": ");Serial.println(range);
   
   PidGainContainer pidGainContainer;
-  
+
   while(true)
   {
     if(uxQueueMessagesWaiting(messageQueue) == 4)
@@ -102,14 +111,41 @@ void loop()
     pidGainContainer.dGainAngle,
     pidGainContainer.iLimitAngle
   );
-
+  
   while(true)
   {
-    // imu needs ~1700us for complete roll angle calculation
+  /*  
+    mpu.accRead();
+  
+    Serial.print(mpu.getAccData().x, 6);Serial.print(" ");
+    Serial.print(mpu.getAccData().y, 6);Serial.print(" ");
+    Serial.println(mpu.getAccData().z, 6);
+  
+    mpu.gyroReadX();
+    Serial.println(mpu.getGyroData().x, 6);
+
+    mpu.accReadComp();
+    mpu.gyroReadXComp();
+    mpu.accCalcAngles();
+    rollAngle = mpu.calculateRollAngle(deltaT);
+    Serial.println(rollAngle, 3);
+  
+    
+    mpu.executeCalibration(&gyroOffsets, &accOffsets);
+    Serial.println("Gyro");
+    Serial.println(gyroOffsets.x, 6);
+
+    Serial.println("Acc");
+    Serial.print(accOffsets.x, 6);Serial1.print(" ");
+    Serial.print(accOffsets.y, 6);Serial1.print(" ");
+    Serial.println(accOffsets.z, 6);
+    */
     mpu.accRead();
     mpu.gyroReadX();
     mpu.accCalcAngles();
     rollAngle = mpu.calculateRollAngle(deltaT);
+
+    Serial.print(rollAngle, 3);Serial.print("   ");
 
     if(rollAngle > 45.0 || rollAngle < -45.0)
     {
@@ -124,9 +160,9 @@ void loop()
       {
         leftStepper.enableInterrupt();
         rightStepper.enableInterrupt();
-        //float targetAngle = speedPID.updatePID(0.0, motorSpeed, deltaT); 
-        float motorSpeed = anglePID.updatePID(0.0, rollAngle, deltaT);
-        motorSpeed *= 3600;
+        //float targetAngle = speedPID.updatePID(0.0, motorSpeed); 
+        float motorSpeed = anglePID.updatePID(0.0, rollAngle);
+        motorSpeed *= 3200;
         leftStepper.setMotorSpeed(motorSpeed);
         rightStepper.setMotorSpeed(motorSpeed);
       }
@@ -138,7 +174,7 @@ void loop()
       xQueueReceive(messageQueue, &pidGainContainer.iGainAngle, portMAX_DELAY);
       xQueueReceive(messageQueue, &pidGainContainer.dGainAngle, portMAX_DELAY);
       xQueueReceive(messageQueue, &pidGainContainer.iLimitAngle, portMAX_DELAY);
-  
+     
       anglePID.setP(pidGainContainer.pGainAngle);
       anglePID.setI(pidGainContainer.iGainAngle);
       anglePID.setD(pidGainContainer.dGainAngle);
