@@ -15,7 +15,7 @@
 #include "Config.h"
 #include "Sonar.h"
 
-#define Serial Serial1
+#define Serial Serial
 #define I2Cclock 400000
 
 uint32_t cpuClock, i;
@@ -44,6 +44,7 @@ void setup()
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, HIGH);
 
+  Serial1.begin(115200);
   Serial.begin(115200);
   Serial.println("initialized");
 
@@ -114,13 +115,15 @@ void loop()
   
   while(true)
   {
-  /*  
+    
+    
+    /*
     mpu.accRead();
   
     Serial.print(mpu.getAccData().x, 6);Serial.print(" ");
     Serial.print(mpu.getAccData().y, 6);Serial.print(" ");
     Serial.println(mpu.getAccData().z, 6);
-  
+
     mpu.gyroReadX();
     Serial.println(mpu.getGyroData().x, 6);
 
@@ -129,7 +132,6 @@ void loop()
     mpu.accCalcAngles();
     rollAngle = mpu.calculateRollAngle(deltaT);
     Serial.println(rollAngle, 3);
-  
     
     mpu.executeCalibration(&gyroOffsets, &accOffsets);
     Serial.println("Gyro");
@@ -139,13 +141,14 @@ void loop()
     Serial.print(accOffsets.x, 6);Serial1.print(" ");
     Serial.print(accOffsets.y, 6);Serial1.print(" ");
     Serial.println(accOffsets.z, 6);
-    */
-    mpu.accRead();
-    mpu.gyroReadX();
+    
+    
+    mpu.accReadComp();
+    mpu.gyroReadXComp();
     mpu.accCalcAngles();
     rollAngle = mpu.calculateRollAngle(deltaT);
 
-    Serial.print(rollAngle, 3);Serial.print("   ");
+    Serial.print(rollAngle, 3);Serial.print("   ");Serial.println();
 
     if(rollAngle > 45.0 || rollAngle < -45.0)
     {
@@ -194,6 +197,7 @@ void loop()
       ledToggle = !ledToggle;
       ledAddTime = 0;
     }
+    */
   }
 }
 
@@ -238,8 +242,38 @@ void commTaskHandler(void * pvParameters)
         btInstance.write((uint8_t*) responseBuffer, responseLenght);
       }
     }
+    else if(Serial1.available() >= 9)
+    {
+      while(Serial1.available()>=9)
+      {
+        if((0x59 == Serial1.read()) && (0x59 == Serial1.read())) //Byte1 & Byte2
+        {
+          unsigned int t1 = Serial1.read(); //Byte3
+          unsigned int t2 = Serial1.read(); //Byte4
+      
+          t2 <<= 8;
+          t2 += t1;
+          Serial.print(t2);
+          Serial.print('\t');
+      
+          t1 = Serial1.read(); //Byte5
+          t2 = Serial1.read(); //Byte6
+      
+          t2 <<= 8;
+          t2 += t1;
+          Serial.println(t2);
+      
+          for(int i=0; i<3; i++) 
+          { 
+              Serial1.read(); ////Byte7,8,9
+          }
+        }
+      }
+    }
     else
+    {
       delay(10);
+    }
   }
 }
 
@@ -248,6 +282,9 @@ void searchForDevices()
 {  
   uint8_t cnt = 0;
 
+  Wire.begin();
+  Wire.setClock(ADAFRUIT_I2C_CLK);
+  
   Serial.println("Scanning I2C Addresses");
   
   for(uint8_t i = 0; i < 128; i++)
