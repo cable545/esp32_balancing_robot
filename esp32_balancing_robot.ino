@@ -14,9 +14,20 @@
 #include "Cmd.h"
 #include "Config.h"
 #include "Sonar.h"
+#include "Servo_ESP32.h"
 
 #define Serial Serial
 #define I2Cclock 400000
+
+int servoPin = 26;
+
+Servo_ESP32 servo1;
+
+int angle = 0;
+int angleStep = 5;
+
+int angleMin = 0;
+int angleMax = 180;
 
 uint32_t cpuClock, i;
 uint32_t timeMeasure = 0, timeMeasure2 = 0, timeMeasure3 = 0, lastTimeMeasure = 0, elapsedMicros = 0;
@@ -48,12 +59,14 @@ void setup()
   Serial.begin(115200);
   Serial.println("initialized");
 
+  servo1.attach(servoPin);
+
   //cpuClock = getCpuFrequencyMhz(); //Get CPU clock
   searchForDevices();
 
   //sonar.init();
 
-  
+  ledcAttachPin(servoPin, 0);
   messageQueue = xQueueCreate(queueSize, sizeof(float));
 
   if(messageQueue == NULL){
@@ -112,10 +125,27 @@ void loop()
     pidGainContainer.dGainAngle,
     pidGainContainer.iLimitAngle
   );
+
+  int posDegrees = 0;
+  int up = 1;
   
   while(true)
   {
     
+    
+    for(int posDegrees = 0; posDegrees < 180; posDegrees++)
+    {
+      servo1.write(posDegrees);
+      //Serial.println(posDegrees);
+      delay(2);
+    }
+
+    for(posDegrees = 179; posDegrees > 0; posDegrees--)
+    {
+      servo1.write(posDegrees);
+      //Serial.println(posDegrees);
+      delay(2);
+    }
     
     /*
     mpu.accRead();
